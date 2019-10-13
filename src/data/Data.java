@@ -5,7 +5,7 @@ import block.Block;
 public class Data {
 	
 	private char letter;
-	private String authorHashId;//Author's id (the one who send the letter)
+	private String authorHashId;//Author's id's hash (the one who send the letter)
 	private Block lastBlockInChain;//Server always starts with a block
 	
 	public Data(char letter, String authorHashId, Block lastBlockInChain) {
@@ -26,7 +26,4 @@ public class Data {
 	public char getLetter() {
 		return letter;
 	}
-	
-	
-	
 }

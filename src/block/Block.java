@@ -16,6 +16,14 @@ public class Block {
 		this.hashId = hashId;
 		this.politicianHashId = politicianHashId;
 	}
+	
+	//copy constructor
+	@SuppressWarnings("unchecked")
+	public Block(Block toCopy) {
+		this.word = (ArrayList<Data>) toCopy.word.clone();
+		this.hashId = toCopy.hashId;
+		this.politicianHashId = toCopy.politicianHashId;
+	}
 
 	public boolean isEmptyWord() {
 		return this.word.isEmpty();
@@ -25,6 +33,8 @@ public class Block {
 		return word;
 	}
 	
+	//return true if hashId = this.hashId
+	//else return false
 	public boolean isBlockId(String hashId) {
 		return hashId.equals(this.hashId);
 	}
