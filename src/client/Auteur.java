@@ -1,7 +1,7 @@
 package client;
 
 import java.security.MessageDigest;
-//import javax.xml.bind.DatatypeConverter;
+import javax.xml.bind.DatatypeConverter;
 import java.util.ArrayList;
 
 import block.Block;
@@ -28,34 +28,6 @@ public class Auteur {
 		this.myHashId = hash_id(this.myId);
 		this.myLetters = (ArrayList<Character>) letters.clone();
 		this.mySubmittedLetters = new ArrayList<>();
-	}
-	
-	private String getMyId() {
-		int id;
-		synchronized (mutex) {
-			id = Auteur.idCpt;
-			Auteur.idCpt++;
-		}
-		String res = "Auteur_"+id;
-		return res;
-	}
-	
-	
-	public static String hash_id(String id) {
-		
-		String result = null;
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(id.getBytes("UTF-8"));
-                    
-            //decommenter la ligne suivante
-            //result = DatatypeConverter.printHexBinary(hash); 
-                        
-            return result.substring(0,16);
-        }catch(Exception ex) {
-            ex.printStackTrace();
-        }
-        return result;
 	}
 	
 	//if block isValid then add it to the local blockchain,
@@ -95,4 +67,42 @@ public class Auteur {
 	//TODO method : submit letter
 	
 	
+	private String getMyId() {
+		int id;
+		synchronized (mutex) {
+			id = Auteur.idCpt;
+			Auteur.idCpt++;
+		}
+		String res = "Auteur_"+id;
+		return res;
+	}
+	
+	//hash the id using SHA-256
+	public static String hash_id(String id) {
+		String result = null;
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(id.getBytes("UTF-8")); 
+            result = DatatypeConverter.printHexBinary(hash);                         
+            return result;
+        }catch(Exception ex) {
+            ex.printStackTrace();
+        }
+        return result;
+	}
+
+	public int getMyScore() {
+		return myScore;
+	}
+	
+	public static void main(String a[]) {
+		ArrayList<Auteur> l = new ArrayList<>();
+		for(int i = 0; i < 10; i++) {
+			l.add(new Auteur(new Blockchain(), 0, new ArrayList<>()));
+			System.out.println(l.get(i).myId+" created");
+			System.out.println(l.get(i).myHashId+" :hash");
+		}
+		
+		
+	}
 }
