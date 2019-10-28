@@ -6,6 +6,7 @@ import java.util.Collections;
 
 import javax.xml.bind.DatatypeConverter;
 
+import Words.Ptrie;
 import block.Block;
 import block.Blockchain;
 import data.Data;
@@ -14,6 +15,7 @@ public class Politicien implements Runnable{
 
 	private static Integer idCpt = 0;
 	private static final Object mutex = new Object();
+	private static final Object waitround = new Object();
 
 	private int cpt;
 	private int myScore;
@@ -21,15 +23,28 @@ public class Politicien implements Runnable{
 	private String myId;
 	private String myHashId;//SHA-256 of id
 	private ArrayList<Data> lettersFromAuthors;//submitted unused valid letters
+	
+	private ArrayList<Auteur> authors;
+	private ArrayList<Politicien> politicians;
+	
+	private int word_size;
+	private Ptrie dico;
+	
+	
+	
 
 	@SuppressWarnings("unchecked")
-	public Politicien(Blockchain bc, int score, ArrayList<Character> lettersFromAuthors) {
+	public Politicien(Blockchain bc, int score, ArrayList<Character> lettersFromAuthors, int word_size, Ptrie arbre) {
 		this.cpt = 0;
 		this.myScore = score;
 		this.myBlockChain = new Blockchain(bc);//copy bc
 		this.myId = getMyId();
 		this.myHashId = hash_id(this.myId);
 		this.lettersFromAuthors = (ArrayList<Data>) lettersFromAuthors.clone();
+		this.authors = new ArrayList<Auteur>();
+		this.politicians = new ArrayList<Politicien>();
+		this.word_size = word_size;
+		this.dico = arbre;
 	}
 
 	//hash the id using SHA-256
@@ -70,8 +85,12 @@ public class Politicien implements Runnable{
 
 	public void sendBlock(Block b,Blockchain bc) {
 
-		//broadcast the new block to others
-
+		for(Auteur a : authors) {
+			a.receiveBlock(b, bc);
+		}
+		for(Politicien p : politicians) {
+			p.receiveBlock(b, bc);
+		}
 
 	}
 
@@ -146,11 +165,50 @@ public class Politicien implements Runnable{
 
 		myBlockChain.addBlock(newB);
 	}
+	
+	public synchronized void receiveLetter(Data d) {
+		lettersFromAuthors.add(d);
+	}
+	
+	
+	public void cleanAuthorsLetters() {
+		ArrayList<Data> toRemove = new ArrayList<Data>();
+		
+		for(Data d : lettersFromAuthors) {
+			if(d.getLastBlockInChain().gethashId() != myBlockChain.getLastBlock().gethashId()) {
+				toRemove.add(d);
+			}
+		}
+		lettersFromAuthors.removeAll(toRemove);
+	}
+	
+	public static Object getWaiter() {
+		return Politicien.waitround;
+	}
+	
+	
 
 	@Override
 	public void run() {
-		// TODO Auto-generated method stub
-
+		while(myBlockChain.getBlocks().size()<20) {
+			synchronized (waitround) {
+				try {
+					waitround.wait();
+					
+					
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+			cleanAuthorsLetters();
+			
+		}
+		
+		
+		
+		
+		
+		
 	}
 
 }
