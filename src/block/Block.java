@@ -52,5 +52,8 @@ public class Block {
 		return isBlockId(b.hashId); 
 	}
 	
+	public String gethashId() {
+		return this.hashId;
+	}
 	
 }

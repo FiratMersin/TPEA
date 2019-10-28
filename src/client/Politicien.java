@@ -5,10 +5,11 @@ import java.util.ArrayList;
 
 import javax.xml.bind.DatatypeConverter;
 
+import block.Block;
 import block.Blockchain;
 import data.Data;
 
-public class Politicien {
+public class Politicien implements Runnable{
 	
 	private static Integer idCpt = 0;
 	private static final Object mutex = new Object();
@@ -54,6 +55,29 @@ public class Politicien {
 			}
 			String res = "Politicien_"+id;
 			return res;
+		}
+		
+		public ArrayList<String> getWords(ArrayList<Data> l_list){
+			
+			// return the words which can be created with the PatriciaTry
+			return null;
+			
+		}
+		
+		
+		public void createBlock(ArrayList<Data> word) {
+			String BlockHashId = hash_id( myHashId+ myBlockChain.getLastBlock().gethashId() );
+			Block newB = new Block(word, BlockHashId, myHashId);
+
+			if(!myBlockChain.isValidBlock(newB))return;
+			
+			myBlockChain.addBlock(newB);
+		}
+
+		@Override
+		public void run() {
+			// TODO Auto-generated method stub
+			
 		}
 	
 }
