@@ -14,6 +14,7 @@ public class Politicien implements Runnable{
 	private static Integer idCpt = 0;
 	private static final Object mutex = new Object();
 	
+	private int cpt;
 	private int myScore;
 	private Blockchain myBlockChain;
 	private String myId;
@@ -22,6 +23,7 @@ public class Politicien implements Runnable{
 	
 	@SuppressWarnings("unchecked")
 	public Politicien(Blockchain bc, int score, ArrayList<Character> lettersFromAuthors) {
+		this.cpt = 0;
 		this.myScore = score;
 		this.myBlockChain = new Blockchain(bc);//copy bc
 		this.myId = getMyId();
@@ -57,19 +59,50 @@ public class Politicien implements Runnable{
 			return res;
 		}
 		
-		public ArrayList<String> getWords(ArrayList<Data> l_list){
+		public ArrayList<Data> getWord(){
 			
-			// return the words which can be created with the PatriciaTry
+			//return the best word which can be created
+			
 			return null;
 			
 		}
 		
+		public void sendBlock(Block b,Blockchain bc) {
+			
+			//broadcast the new block to others
+			
+			
+		}
 		
-		public void createBlock(ArrayList<Data> word) {
-			String BlockHashId = hash_id( myHashId+ myBlockChain.getLastBlock().gethashId() );
-			Block newB = new Block(word, BlockHashId, myHashId);
+		public void receiveBlock(Block b,Blockchain bc) {
+			
+			if(myBlockChain.isValidBlock(b)) {
+				myBlockChain.addBlock(b);
+			}else {
+				
+				//
+				
+				
+			}
+			
+			
+			
+			
+		}
+		public void createBlock() {
+			
+			ArrayList<Data> word = getWord();
+			String BlockHashId = hash_id( myHashId+myBlockChain.getLastBlock().gethashId()+ cpt);
+			
+			Block newB = new Block(myBlockChain.getLastBlock().gethashId(),
+									word,
+									BlockHashId,
+									myHashId);
 
 			if(!myBlockChain.isValidBlock(newB))return;
+			
+			
+			sendBlock(newB,myBlockChain);
 			
 			myBlockChain.addBlock(newB);
 		}

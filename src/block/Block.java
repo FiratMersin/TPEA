@@ -8,10 +8,11 @@ public class Block {
 	private ArrayList<Data> word;
 	private String hashId; //block id
 	private String politicianHashId;
+	private String previoushashId;
 	
-	
-	public Block(ArrayList<Data> word, String hashId, String politicianHashId) {
+	public Block(String previoushashId, ArrayList<Data> word, String hashId, String politicianHashId) {
 		super();
+		this.previoushashId = previoushashId;
 		this.word = word;
 		this.hashId = hashId;
 		this.politicianHashId = politicianHashId;
@@ -23,6 +24,7 @@ public class Block {
 		this.word = (ArrayList<Data>) toCopy.word.clone();
 		this.hashId = toCopy.hashId;
 		this.politicianHashId = toCopy.politicianHashId;
+		this.previoushashId = toCopy.previoushashId;
 	}
 
 	public boolean isEmptyWord() {
@@ -54,6 +56,10 @@ public class Block {
 	
 	public String gethashId() {
 		return this.hashId;
+	}
+	
+	public String getprevioushashId() {
+		return this.previoushashId;
 	}
 	
 }
