@@ -11,7 +11,7 @@ import client.Politicien;
 import data.Data;
 
 public class Launcher {
-	public final static int nb_authors = 20;
+	public final static int nb_authors = 5;
 	public final static int nb_politicians = 5;
 	
 	public final static int nb_letters_per_pool = 200;
@@ -43,6 +43,7 @@ public class Launcher {
 		
 		
 		
+		
 		ArrayList<Auteur> authors = new ArrayList<Auteur>();
 		ArrayList<Politicien> politicians = new ArrayList<Politicien>();
 		
@@ -53,7 +54,7 @@ public class Launcher {
 		for(int i=0; i<nb_authors; i++) {
 			ArrayList<Character> letters = new ArrayList<Character>();
 			for(int j=0; j< nb_letters_per_pool; j++) {
-				letters.add(alphabet[(int)(Math.random()*(122-97)+97)]);
+				letters.add(alphabet[(int)(Math.random()*26)]);
 			}
 			Auteur auteur = new Auteur(blockchain, 0, letters, auteurs);
 			authors.add(auteur);
@@ -74,13 +75,15 @@ public class Launcher {
 		}
 		
 		
+		for(Politicien politicien: politicians) {
+			new Thread(politicien).start();
+		}
+		
 		for(Auteur auteur : authors) {
 			new Thread(auteur).start();
 		}
 		
-		for(Politicien politicien: politicians) {
-			new Thread(politicien).start();
-		}
+
 		
 		
 		

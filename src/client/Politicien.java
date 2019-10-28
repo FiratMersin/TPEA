@@ -193,7 +193,32 @@ public class Politicien implements Runnable{
 		while(myBlockChain.getBlocks().size()<20) {
 			synchronized (waitround) {
 				try {
+					System.out.println("je m'endors");
 					waitround.wait();
+					System.out.println("je me reveille");
+					ArrayList<Data> word = new ArrayList<Data>();
+					for(int i = 0; i < 6; i++ ) {
+						Collections.shuffle(lettersFromAuthors);
+						word.add(lettersFromAuthors.get(0));
+					}
+					ArrayList<Data> mot = dico.findWord(word);
+					String s = "";
+					for(Data d : mot) {
+						s+=d.getLetter();
+					}
+					Block block = new Block(myBlockChain.getLastBlock().gethashId(), mot, hash_id(s+myHashId+idCpt) , myHashId);	
+					for(Auteur a : authors) {
+						a.receiveBlock(block, myBlockChain);
+					}
+					for(Politicien p : politicians) {
+						p.receiveBlock(block, myBlockChain);
+					}
+					myBlockChain.addBlock(block);
+					
+					synchronized(Auteur.getWaiter()) {
+						Auteur.getWaiter().notifyAll();
+					}
+					
 					
 					
 				} catch (InterruptedException e) {

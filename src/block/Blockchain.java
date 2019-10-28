@@ -17,14 +17,15 @@ public class Blockchain {
 	
 	//copy constructor
 	public Blockchain(Blockchain toCopy) {
-		this.blockchain = new ArrayList<>();
-		for(Block b : blockchain) {
+		this.blockchain = new ArrayList<Block>();
+		for(Block b : toCopy.getBlocks()) {
 			this.blockchain.add(new Block(b));
 		}
+		
 	}
 	
 	public Blockchain(ArrayList<Block> block_list) {
-		this.blockchain = new ArrayList<>();
+		this.blockchain = new ArrayList<Block>();
 		for(Block b : block_list) {
 			this.blockchain.add(new Block(b));
 		}
@@ -40,7 +41,7 @@ public class Blockchain {
 
 	public Block getLastBlock() {
 		
-		assert (! blockchain.isEmpty());
+		assert (!(blockchain.size()>0));
 		
 		return blockchain.get(blockchain.size() -1);
 	}

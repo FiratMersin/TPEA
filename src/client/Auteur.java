@@ -193,11 +193,20 @@ public class Auteur implements Runnable {
 			}
 		}
 	}
+	
+	
+	
+	public static Object getWaiter() {
+		return Auteur.waitround;
+	}
+	
+	
 
 	@Override
 	public void run() {
 		while(myBlockChain.getBlocks().size()<20) {
 			try {
+				System.out.println("je suis la "+ myHashId);
 				cleanMySubmittedLetters();
 				Collections.shuffle(this.myLetters);
 				Data d = new Data(myLetters.get(0), myHashId, myBlockChain.getLastBlock());
@@ -205,16 +214,22 @@ public class Auteur implements Runnable {
 				for(Politicien p : politicians) {
 					p.receiveLetter(d);
 				}
-				
+				System.out.println(barrier.getNumberWaiting());
 				barrier.await();
-				synchronized (waitround) {
+				System.out.println("release the kraken");
+				synchronized (Politicien.getWaiter()) {
+					System.out.println("J'arrive dans le bordel " + myHashId);
 					if(isFirstAwaken) {
+						System.out.println("premier arrve premier servi " + myHashId);
 						isFirstAwaken=false;
 						Politicien.getWaiter().notifyAll();
+						System.out.println("j'ai notifie ta race ");
 					}
-					
-					waitround.wait();
-					isFirstAwaken = true;
+					synchronized(waitround) {
+						System.out.println("maintenant j'attend");
+						waitround.wait();
+						isFirstAwaken = true;
+					}
 					
 				}
 				
@@ -225,9 +240,8 @@ public class Auteur implements Runnable {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-			
+			System.out.println(myBlockChain.getBlocks().size());
 		}
-		
 		for(Block b : myBlockChain.getBlocks()) {
 			for(Data d : b.getWord()) {
 				if(d.getAuthorHashId() == myHashId) {
