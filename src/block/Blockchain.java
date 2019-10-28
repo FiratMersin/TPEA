@@ -23,6 +23,20 @@ public class Blockchain {
 		}
 	}
 	
+	public Blockchain(ArrayList<Block> block_list) {
+		this.blockchain = new ArrayList<>();
+		for(Block b : block_list) {
+			this.blockchain.add(new Block(b));
+		}
+	}
+	
+	
+	
+	public ArrayList<Block> getBlocks(){
+		return blockchain;
+	}
+	
+	
 
 	public Block getLastBlock() {
 		
