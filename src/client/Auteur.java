@@ -36,15 +36,18 @@ public class Auteur implements Runnable {
 	private ArrayList<Character> myLetters;
 	private ArrayList<Data> mySubmittedLetters;//submitted unused valid letters
 	private Round round;
+	private int word_size;
 	
 	private ArrayList<Auteur> authors;
 	private ArrayList<Politicien> politicians;
 	
 	private CyclicBarrier barrier;
 	
+	private static int[] lettersPoint = {1, 3, 3, 2, 1, 4, 2, 4, 1, 8, 10, 1, 2, 1, 1, 3, 8, 1, 1, 1, 1,
+			4, 10, 10, 10, 10};
 	
 	@SuppressWarnings("unchecked")
-	public Auteur(Blockchain bc, int score, ArrayList<Character> letters, CyclicBarrier barrier) {
+	public Auteur(Blockchain bc, int score, ArrayList<Character> letters, int word_size, CyclicBarrier barrier) {
 		this.myScore = score;
 		this.myBlockChain = new Blockchain(bc);//copy bc
 		this.myId = getMyId();
@@ -55,6 +58,7 @@ public class Auteur implements Runnable {
 		this.politicians = new ArrayList<Politicien>();
 		this.barrier = barrier;
 		this.canTakeSemaphore = true;
+		this.word_size = word_size;
 	}
 	
 	//if block isValid then add it to the local blockchain,
@@ -158,14 +162,14 @@ public class Auteur implements Runnable {
 			bc.addBlock(bl);
 		}
 		
-		//if(myBlockChain.isValidBlock(b)) {
+		if(myBlockChain.isValidBlock(b)) {
 			myBlockChain.addBlock(b);
-		/*}else {
+		}else {
 			
 			//CONSENSUS ALGORITHM
 			
 			Block tested_B = b;
-			ArrayList<Block> myblockList = myBlockChain.getBlocks();
+			ArrayList<Block> myblockList = (ArrayList<Block>) myBlockChain.getBlocks().clone();
 			ArrayList<Block> new_bc = new ArrayList<Block>();
 			ArrayList<Block> next_bc = new ArrayList<Block>();
 
@@ -207,7 +211,7 @@ public class Auteur implements Runnable {
 					}
 				}
 			}
-		}*/
+		}
 //		System.out.println(myId +" author finished his consensus nique ta race");
 	}
 	
@@ -222,7 +226,7 @@ public class Auteur implements Runnable {
 	@Override
 	public void run() {
 		int i = 1;
-		while(myBlockChain.getBlocks().size()<21 && round.getNbAuthors() >=6) {
+		while(myBlockChain.getBlocks().size()<21 && round.getNbAuthors() >= this.word_size) {
 			cleanMySubmittedLetters();
 			
 			
@@ -251,7 +255,7 @@ public class Auteur implements Runnable {
 				}
 			}
 		}
-		System.out.println("Score of Autor: " + myHashId + " = " +myScore);
+		System.out.println("Score of Autor: " + myId + " = " +this.getScore());
 		
 		
 	}
@@ -277,7 +281,22 @@ public class Auteur implements Runnable {
 		this.politicians.remove(a);
 	}
 
+	public Blockchain getMyBlockChain() {
+		return myBlockChain;
+	}
+
+	public int getScore() {
+		int score = 0;
+		for(Block b : this.myBlockChain.getBlocks()) {
+			for(Data d : b.getWord()) {
+				if(d.getAuthorHashId() == this.myHashId)
+					score += lettersPoint[d.getLetter() -'a'];
+			}
+		}
+		return score;
+	}
 	
-	
-	
+	public String getId() {
+		return this.myId;
+	}
 }

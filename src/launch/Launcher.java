@@ -12,7 +12,7 @@ import data.Data;
 import round.Round;
 
 public class Launcher {
-	public final static int nb_authors = 16;
+	public final static int nb_authors = 250;
 	public final static int nb_politicians = 5;
 	
 	public final static int nb_letters_per_pool = 200;
@@ -59,7 +59,7 @@ public class Launcher {
 			for(int j=0; j< nb_letters_per_pool; j++) {
 				letters.add(alphabet[(int)(Math.random()*26)]);
 			}
-			Auteur auteur = new Auteur(blockchain, 0, letters, auteurs);
+			Auteur auteur = new Auteur(blockchain, 0, letters, word_size, auteurs);
 			authors.add(auteur);
 		}
 		
@@ -109,9 +109,5 @@ public class Launcher {
 		for(Auteur auteur : authors) {
 			new Thread(auteur).start();
 		}
-		
-		
 	}
-	
-
 }
