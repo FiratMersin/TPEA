@@ -1,23 +1,33 @@
 package client;
 
 import java.security.MessageDigest;
-import javax.xml.bind.DatatypeConverter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.Semaphore;
+
+import javax.xml.bind.DatatypeConverter;
 
 import block.Block;
 import block.Blockchain;
 import data.Data;
+import round.Round;
 
 public class Auteur implements Runnable {
 
 	private static Integer idCpt = 0;
 	private static final Object mutex = new Object();
 	private static final Object waitround = new Object();
+	private static final Object nb_auths_asleep = new Object();
 	private static int awaiting_authors = 0; 
 	private static boolean isFirstAwaken = true;
+	private static Semaphore sem_auteurs;
+	private boolean canTakeSemaphore;
+	private static final Object wait_on_CanTakeSem = new Object();
+	private static final Object mutex_read_CTS = new Object();
+	
+	private static int nb_asleep = 0;
 	
 	private int myScore;
 	private Blockchain myBlockChain;
@@ -25,6 +35,7 @@ public class Auteur implements Runnable {
 	private String myHashId;//SHA-256 of id
 	private ArrayList<Character> myLetters;
 	private ArrayList<Data> mySubmittedLetters;//submitted unused valid letters
+	private Round round;
 	
 	private ArrayList<Auteur> authors;
 	private ArrayList<Politicien> politicians;
@@ -43,6 +54,7 @@ public class Auteur implements Runnable {
 		this.authors = new ArrayList<Auteur>();
 		this.politicians = new ArrayList<Politicien>();
 		this.barrier = barrier;
+		this.canTakeSemaphore = true;
 	}
 	
 	//if block isValid then add it to the local blockchain,
@@ -140,11 +152,15 @@ public class Auteur implements Runnable {
 
 	}
 
-	public void receiveBlock(Block b,Blockchain bc) {
-
-		if(myBlockChain.isValidBlock(b)) {
+	public synchronized void receiveBlock(Block b,Blockchain obc) {
+		Blockchain bc = new Blockchain();
+		for(Block bl : obc.getBlocks()) {
+			bc.addBlock(bl);
+		}
+		
+		//if(myBlockChain.isValidBlock(b)) {
 			myBlockChain.addBlock(b);
-		}else {
+		/*}else {
 			
 			//CONSENSUS ALGORITHM
 			
@@ -155,7 +171,7 @@ public class Auteur implements Runnable {
 
 			while(true) {
 				
-				for(int i = myblockList.size()-1 ;i>=0; i++) {
+				for(int i = myblockList.size()-1 ;i>=0; i--) {
 					if(myblockList.get(i).gethashId() == tested_B.getprevioushashId()) {
 						for(Block bl: myblockList) {
 							
@@ -191,7 +207,8 @@ public class Auteur implements Runnable {
 					}
 				}
 			}
-		}
+		}*/
+//		System.out.println(myId +" author finished his consensus nique ta race");
 	}
 	
 	
@@ -204,44 +221,29 @@ public class Auteur implements Runnable {
 
 	@Override
 	public void run() {
-		while(myBlockChain.getBlocks().size()<20) {
-			try {
-				System.out.println("je suis la "+ myHashId);
-				cleanMySubmittedLetters();
-				Collections.shuffle(this.myLetters);
-				Data d = new Data(myLetters.get(0), myHashId, myBlockChain.getLastBlock());
-				mySubmittedLetters.add(d);
-				for(Politicien p : politicians) {
+		int i = 1;
+		while(myBlockChain.getBlocks().size()<21 && round.getNbAuthors() >=6) {
+			cleanMySubmittedLetters();
+			
+			
+			Collections.shuffle(this.myLetters);
+			Data d = new Data(myLetters.get(0), myHashId, myBlockChain.getLastBlock());
+			mySubmittedLetters.add(d);
+			for(Politicien p : politicians) {
+				synchronized(p) {
 					p.receiveLetter(d);
 				}
-				System.out.println(barrier.getNumberWaiting());
-				barrier.await();
-				System.out.println("release the kraken");
-				synchronized (Politicien.getWaiter()) {
-					System.out.println("J'arrive dans le bordel " + myHashId);
-					if(isFirstAwaken) {
-						System.out.println("premier arrve premier servi " + myHashId);
-						isFirstAwaken=false;
-						Politicien.getWaiter().notifyAll();
-						System.out.println("j'ai notifie ta race ");
-					}
-					synchronized(waitround) {
-						System.out.println("maintenant j'attend");
-						waitround.wait();
-						isFirstAwaken = true;
-					}
-					
-				}
-				
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (BrokenBarrierException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
 			}
+//				System.out.println(this.myId+" ieme passage : "+i );
+//				System.out.println(this.myId+" passed la barriere");
+//				System.out.println("authors size = "+authors.size());
+				
+			//System.out.println("UN AUTEUR REVEIL TOUS LES POLITICIENS AU NOMBRE DE "+this.politicians.size());
 			System.out.println(myBlockChain.getBlocks().size());
+			i++;
+			round.waitAuthorsRound();
 		}
+		round.unRegister(this);
 		for(Block b : myBlockChain.getBlocks()) {
 			for(Data d : b.getWord()) {
 				if(d.getAuthorHashId() == myHashId) {
@@ -249,8 +251,33 @@ public class Auteur implements Runnable {
 				}
 			}
 		}
-		System.out.println("Score of " + myHashId + " = " +myScore);
+		System.out.println("Score of Autor: " + myHashId + " = " +myScore);
 		
 		
 	}
+	
+	public static Object getAuthsAsleep() {
+		return nb_auths_asleep;
+	}
+	
+	public void setRound(Round round) {
+		this.round = round;
+	}
+	
+	
+	public static void setSemaphore(int permits) {
+		Auteur.sem_auteurs = new Semaphore(permits);
+	}
+	
+	public synchronized void authorLeft(Auteur a) {
+		this.authors.remove(a);
+	}
+	
+	public synchronized void PolLeft(Politicien a) {
+		this.politicians.remove(a);
+	}
+
+	
+	
+	
 }

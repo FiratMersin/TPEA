@@ -1,12 +1,16 @@
 package block;
 
 import java.util.ArrayList;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import data.Data;
 
 public class Blockchain {
 	
 	ArrayList<Block> blockchain;
+	
+	private Lock lock = new ReentrantLock();
 	
 	//TODO when the game starts, the blockchain contains one block
 
@@ -18,9 +22,12 @@ public class Blockchain {
 	//copy constructor
 	public Blockchain(Blockchain toCopy) {
 		this.blockchain = new ArrayList<Block>();
-		for(Block b : toCopy.getBlocks()) {
+		ArrayList<Block> bl = (ArrayList<Block>) toCopy.getBlocks().clone();
+		for(Block b : bl) {
 			this.blockchain.add(new Block(b));
 		}
+		
+		
 		
 	}
 	
@@ -34,7 +41,10 @@ public class Blockchain {
 	
 	
 	public ArrayList<Block> getBlocks(){
-		return blockchain;
+		lock.lock();
+		ArrayList<Block> b = blockchain;
+		lock.unlock();
+		return b;
 	}
 	
 	
@@ -48,7 +58,9 @@ public class Blockchain {
 	
 	//add a copy of b in the blockchain
 	public void addBlock(Block b) {
+		lock.lock();
 		this.blockchain.add(new Block(b));
+		lock.unlock();
 	}
 	
 	//Checks if the block can be added to the blockchain

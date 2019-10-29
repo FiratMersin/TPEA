@@ -61,5 +61,11 @@ public class Block {
 	public String getprevioushashId() {
 		return this.previoushashId;
 	}
+
+	public String getPoliticianHashId() {
+		return politicianHashId;
+	}
+	
+	
 	
 }

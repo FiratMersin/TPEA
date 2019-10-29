@@ -73,6 +73,9 @@ public class Ptrie {
 	}	
 	
 	public ArrayList<Data> findWord(ArrayList<Data> datas) {
+		if(datas.size()==0) {
+			return datas;
+		}
 		ArrayList<Data> word = new ArrayList<>();
 		ArrayList<Data> letters = new ArrayList<>();
 		letters.addAll(datas);

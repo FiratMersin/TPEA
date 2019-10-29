@@ -3,6 +3,9 @@ package client;
 import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.concurrent.BrokenBarrierException;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.Semaphore;
 
 import javax.xml.bind.DatatypeConverter;
 
@@ -10,12 +13,21 @@ import Words.Ptrie;
 import block.Block;
 import block.Blockchain;
 import data.Data;
+import round.Round;
 
 public class Politicien implements Runnable{
 
 	private static Integer idCpt = 0;
 	private static final Object mutex = new Object();
 	private static final Object waitround = new Object();
+	private static final Object politicians_sleeping = new Object();
+	public static int nb_asleep = 0;
+	private static Semaphore sem_politiciens = new Semaphore(0);
+	private boolean canTakeSemaphore;
+	private static final Object wait_on_CanTakeSem = new Object();
+	private static final Object mutex_read_CTS = new Object();
+	private static int nb_politicians_asleep=0;
+	
 
 	private int cpt;
 	private int myScore;
@@ -23,6 +35,7 @@ public class Politicien implements Runnable{
 	private String myId;
 	private String myHashId;//SHA-256 of id
 	private ArrayList<Data> lettersFromAuthors;//submitted unused valid letters
+	private Round round;
 	
 	private ArrayList<Auteur> authors;
 	private ArrayList<Politicien> politicians;
@@ -30,11 +43,12 @@ public class Politicien implements Runnable{
 	private int word_size;
 	private Ptrie dico;
 	
+	private CyclicBarrier barrier;
 	
+	private static boolean isFirstAwaken = true;
 	
-
 	@SuppressWarnings("unchecked")
-	public Politicien(Blockchain bc, int score, ArrayList<Character> lettersFromAuthors, int word_size, Ptrie arbre) {
+	public Politicien(Blockchain bc, int score, ArrayList<Character> lettersFromAuthors, int word_size, Ptrie arbre, CyclicBarrier barrier) {
 		this.cpt = 0;
 		this.myScore = score;
 		this.myBlockChain = new Blockchain(bc);//copy bc
@@ -45,6 +59,8 @@ public class Politicien implements Runnable{
 		this.politicians = new ArrayList<Politicien>();
 		this.word_size = word_size;
 		this.dico = arbre;
+		this.barrier = barrier;
+		this.canTakeSemaphore = true;
 	}
 
 	//hash the id using SHA-256
@@ -83,33 +99,37 @@ public class Politicien implements Runnable{
 
 	}
 
-	public void sendBlock(Block b,Blockchain bc) {
-
+	public synchronized void sendBlock(Block b,Blockchain obc) {
+		Blockchain bc = new Blockchain(obc);
 		for(Auteur a : authors) {
-			a.receiveBlock(b, bc);
+			a.receiveBlock(b, (new Blockchain(bc)));
 		}
 		for(Politicien p : politicians) {
-			p.receiveBlock(b, bc);
+			p.receiveBlock(b, (new Blockchain(bc)));
 		}
 
 	}
 
-	public void receiveBlock(Block b,Blockchain bc) {
-
+	public synchronized void receiveBlock(Block b,Blockchain obc) {
+		Blockchain bc = new Blockchain();
+		for(Block bl : obc.getBlocks()) {
+			bc.addBlock(bl);
+		}
 		if(myBlockChain.isValidBlock(b)) {
 			myBlockChain.addBlock(b);
-		}else {
+		}
+		else {
 			
 			//CONSENSUS ALGORITHM
 			
 			Block tested_B = b;
-			ArrayList<Block> myblockList = myBlockChain.getBlocks();
+			ArrayList<Block> myblockList = (ArrayList<Block>) myBlockChain.getBlocks().clone();
 			ArrayList<Block> new_bc = new ArrayList<Block>();
 			ArrayList<Block> next_bc = new ArrayList<Block>();
 
 			while(true) {
 				
-				for(int i = myblockList.size()-1 ;i>=0; i++) {
+				for(int i = myblockList.size()-1 ;i>=0; i--) {
 					if(myblockList.get(i).gethashId() == tested_B.getprevioushashId()) {
 						for(Block bl: myblockList) {
 							
@@ -122,8 +142,13 @@ public class Politicien implements Runnable{
 								for(Block nextB: next_bc) {
 									new_bc.add(nextB);
 								}
+								System.out.println(myId +" politician finished his consensus bis chain size before:"+myblockList.size());
 								
-								this.myBlockChain = new Blockchain(new_bc);
+								if(new_bc.size() > myblockList.size()) {
+									this.myBlockChain = new Blockchain(new_bc);
+								}
+
+								System.out.println(myId +" politician finished his consensus bis chain size:"+ myBlockChain.getBlocks().size());
 								return;
 								
 							}else {
@@ -146,9 +171,10 @@ public class Politicien implements Runnable{
 				}
 			}
 		}
+		System.out.println(myId +" politician finished his consensus chain size:"+ myBlockChain.getBlocks().size());
 	}
 
-	public void createBlock() {
+	public synchronized void createBlock() {
 
 		ArrayList<Data> word = getWord();
 		String BlockHashId = hash_id( myHashId+myBlockChain.getLastBlock().gethashId()+ cpt);
@@ -170,6 +196,14 @@ public class Politicien implements Runnable{
 		lettersFromAuthors.add(d);
 	}
 	
+	public void setAuthors(ArrayList<Auteur> authors) {
+		this.authors = authors;
+	}
+	
+	public void setPoliticians(ArrayList<Politicien> politicians) {
+		this.politicians = politicians;
+	}
+	
 	
 	public void cleanAuthorsLetters() {
 		ArrayList<Data> toRemove = new ArrayList<Data>();
@@ -185,55 +219,93 @@ public class Politicien implements Runnable{
 	public static Object getWaiter() {
 		return Politicien.waitround;
 	}
+
+	
+	public static int getNbAsleep() {
+		return nb_asleep;
+	}
 	
 	
 
 	@Override
 	public void run() {
-		while(myBlockChain.getBlocks().size()<20) {
-			synchronized (waitround) {
-				try {
-					System.out.println("je m'endors");
-					waitround.wait();
-					System.out.println("je me reveille");
-					ArrayList<Data> word = new ArrayList<Data>();
-					for(int i = 0; i < 6; i++ ) {
-						Collections.shuffle(lettersFromAuthors);
-						word.add(lettersFromAuthors.get(0));
-					}
-					ArrayList<Data> mot = dico.findWord(word);
-					String s = "";
-					for(Data d : mot) {
-						s+=d.getLetter();
-					}
-					Block block = new Block(myBlockChain.getLastBlock().gethashId(), mot, hash_id(s+myHashId+idCpt) , myHashId);	
-					for(Auteur a : authors) {
-						a.receiveBlock(block, myBlockChain);
-					}
-					for(Politicien p : politicians) {
-						p.receiveBlock(block, myBlockChain);
-					}
-					myBlockChain.addBlock(block);
-					
-					synchronized(Auteur.getWaiter()) {
-						Auteur.getWaiter().notifyAll();
-					}
-					
-					
-					
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-			}
-			cleanAuthorsLetters();
+		int j =1;
+		while(myBlockChain.getBlocks().size()<21 && round.getNbAuthors() >0) {
 			
+			round.waitPoliticiansRound();
+			
+			if(round.getNbAuthors() >0) {
+				ArrayList<Data> word = new ArrayList<Data>();
+				for(int i = 0; i < /*Math.min(lettersFromAuthors.size(), 1)*/6; i++ ) {
+					Collections.shuffle(lettersFromAuthors);
+					word.add(lettersFromAuthors.get(0));
+					lettersFromAuthors.remove(0);
+				}
+				
+				ArrayList<Data> mot = dico.findWord(word);
+				String s = "";
+				for(Data d : mot) {
+					s+=d.getLetter();
+				}
+				Block block = new Block(myBlockChain.getLastBlock().gethashId(), mot, hash_id(s+myHashId+idCpt) , myHashId);
+				for(Auteur a : authors) {
+					a.receiveBlock(block, (new Blockchain(myBlockChain)));
+				}
+				
+	
+				for(Politicien p : politicians) {
+					p.receiveBlock(block, (new Blockchain(myBlockChain)));
+				}
+				myBlockChain.addBlock(block);
+				j++;
+				//}
+				cleanAuthorsLetters();
+			}
+				
+
+		}
+		round.unRegister(this);
+		for(Block b : myBlockChain.getBlocks()) {
+			if(b.getPoliticianHashId() == myHashId) {
+				myScore+=1; // toutes les lettres sont equiprobables donc 1
+			}
 		}
 		
-		
-		
-		
-		
+		System.out.println("Score of Politician: " + myHashId + " = " +myScore);
 		
 	}
 
+
+	public static Object getPolSleep() {
+		return politicians_sleeping;
+	}
+	
+	
+	public static Semaphore getSem_politiciens() {
+		return sem_politiciens;
+	}
+	
+	public void setRound(Round round) {
+		this.round = round;
+	}
+	
+	
+	public static int getsleep() {
+		return nb_asleep;
+	}
+	
+	public synchronized void authorLeft(Auteur a) {
+		this.authors.remove(a);
+	}
+	
+	public synchronized void PolLeft(Politicien a) {
+		this.politicians.remove(a);
+	}
+		
+		
+		
+		
+		
+		
 }
+

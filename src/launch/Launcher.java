@@ -9,9 +9,10 @@ import block.Blockchain;
 import client.Auteur;
 import client.Politicien;
 import data.Data;
+import round.Round;
 
 public class Launcher {
-	public final static int nb_authors = 5;
+	public final static int nb_authors = 16;
 	public final static int nb_politicians = 5;
 	
 	public final static int nb_letters_per_pool = 200;
@@ -49,7 +50,9 @@ public class Launcher {
 		
 		
 		CyclicBarrier auteurs = new CyclicBarrier(nb_authors);
+		CyclicBarrier politiciens = new CyclicBarrier(nb_politicians);
 		
+		Auteur.setSemaphore(nb_authors);
 		
 		for(int i=0; i<nb_authors; i++) {
 			ArrayList<Character> letters = new ArrayList<Character>();
@@ -62,7 +65,7 @@ public class Launcher {
 		
 		
 		for(int i=0; i<nb_politicians; i++) {
-			Politicien politicien = new Politicien(blockchain, 0, new ArrayList<Character>(), word_size, arbre);
+			Politicien politicien = new Politicien(blockchain, 0, new ArrayList<Character>(), word_size, arbre, politiciens);
 			politicians.add(politicien);
 		}
 		
@@ -76,24 +79,36 @@ public class Launcher {
 		
 		
 		for(Politicien politicien: politicians) {
+			ArrayList<Politicien> pol_clone = (ArrayList<Politicien>) politicians.clone();
+			pol_clone.remove(pol_clone.indexOf(politicien));
+			politicien.setPoliticians(pol_clone);
+			politicien.setAuthors(authors);
+			
+			
+		}
+		
+		Round round = new Round(authors, politicians);
+		for(Politicien p : politicians) {
+			p.setRound(round);
+		}
+		
+		for(Auteur a : authors) {
+			a.setRound(round);
+		}
+		
+		
+		new Thread(round).start();
+		
+		
+		for(Politicien politicien: politicians) {
+			
 			new Thread(politicien).start();
+			
 		}
 		
 		for(Auteur auteur : authors) {
 			new Thread(auteur).start();
 		}
-		
-
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
 		
 		
 	}
