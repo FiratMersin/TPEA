@@ -11,14 +11,14 @@ import data.Data;
 import round.Round;
 
 public class Launcher {
-	public final static int nb_authors = 30;
+	public final static int nb_authors = 75;
 	public final static int nb_politicians = 5;
 	
 	public final static int nb_letters_per_pool = 500;
 	
 	public final static char[] alphabet = {'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z'}; 
 	
-	public final static int word_size = 6;
+	public final static int word_size = 10;
 	
 	public final static Ptrie arbre = new Ptrie("dict_100000_1_10.txt");
 

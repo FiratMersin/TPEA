@@ -13,6 +13,8 @@ public class Round implements Runnable{
 	private ArrayList<Politicien> politiciansLeft;
 	private int nbPoliticians;
 	
+	private int max_size_word;
+	
 	private static final Object mutexAuthors = new Object();
 	private static final Object mutexPoliticians = new Object();
 	
@@ -32,6 +34,7 @@ public class Round implements Runnable{
 		this.politiciansLeft = new ArrayList<>();
 		this.politicians.addAll(politicians);
 		this.nbPoliticians = this.politicians.size();
+		this.max_size_word = max_size_word;
 	}
 	
 	public void waitAuthorsRound() {
@@ -187,6 +190,11 @@ public class Round implements Runnable{
 					waitEndOfRoundOfAuthors.wait();
 				}
 				System.out.println("POLITICIANS TURN");
+				
+				int[] size_of_bc = new int[nbPoliticians];
+				for(int i = 0; i< politicians.size(); i++) {
+					size_of_bc[i] = politicians.get(i).getMyBlockChain().getBlocks().size();
+				}
 				synchronized (waitEndOfRoundOfPoliticians) {
 					synchronized(mutexPoliticians) {
 						mutexPoliticians.notifyAll();
@@ -197,7 +205,29 @@ public class Round implements Runnable{
 					waitEndOfRoundOfPoliticians.wait();
 				}
 				
-				
+				boolean word_found =false; 
+				int i = 0;
+				for(Politicien p : politicians){
+					if(p.getMyBlockChain().getBlocks().size() != size_of_bc[i]) {
+						word_found=true;
+					}
+					i++;
+				}
+				if(!word_found) {
+					for(Politicien p : politicians) {
+						p.setDifficulty(p.getDifficulty()-1);
+					}
+					for(Auteur p : authors) {
+						p.setDifficulty(p.getDifficulty()-1);
+					}
+				}else {
+					for(Politicien p : politicians) {
+						p.setDifficulty(max_size_word);
+					}
+					for(Auteur p : authors) {
+						p.setDifficulty(max_size_word);
+					}
+				}
 				
 				/*round++;
 				boolean bcupdated = true;
