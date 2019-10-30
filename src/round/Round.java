@@ -2,7 +2,6 @@ package round;
 
 import java.util.ArrayList;
 
-import block.Blockchain;
 import client.Auteur;
 import client.Politicien;
 
@@ -23,11 +22,7 @@ public class Round implements Runnable{
 	private static final Object waitEndOfRoundOfAuthors = new Object();
 	private static final Object waitEndOfRoundOfPoliticians = new Object();
 	
-	private static int[] lettersPoint = {1, 3, 3, 2, 1, 4, 2, 4, 1, 8, 10, 1, 2, 1, 1, 3, 8, 1, 1, 1, 1,
-			4, 10, 10, 10, 10};
-	
-	
-	public Round(ArrayList<Auteur> authors, ArrayList<Politicien> politicians) {
+	public Round(ArrayList<Auteur> authors, ArrayList<Politicien> politicians, int max_size_word) {
 		super();
 		this.authors = new ArrayList<>();
 		this.authorsLeft = new ArrayList<>();
@@ -84,7 +79,6 @@ public class Round implements Runnable{
 			this.authors.remove(a);
 			this.authorsLeft.add(a);
 			this.nbAuthors--;
-			System.out.println("ROUND "+nbAuthors+" left in course");
 			for(Auteur auth : authors) {
 				auth.authorLeft(a);
 			}
@@ -92,6 +86,11 @@ public class Round implements Runnable{
 				p.authorLeft(a);
 			}
 			if(nbAuthorsWaiting == nbAuthors) {
+				synchronized (waitEndOfRoundOfAuthors) {
+					waitEndOfRoundOfAuthors.notifyAll();
+				}
+			}
+			if(nbAuthors == 0) {
 				synchronized (waitEndOfRoundOfAuthors) {
 					waitEndOfRoundOfAuthors.notifyAll();
 				}
@@ -111,6 +110,11 @@ public class Round implements Runnable{
 				pol.PolLeft(p);
 			}
 			if(nbPoliticiansWaiting == nbPoliticians) {
+				synchronized (waitEndOfRoundOfPoliticians) {
+					waitEndOfRoundOfPoliticians.notifyAll();
+				}
+			}
+			if(nbPoliticians == 0) {
 				synchronized (waitEndOfRoundOfPoliticians) {
 					waitEndOfRoundOfPoliticians.notifyAll();
 				}
@@ -170,11 +174,15 @@ public class Round implements Runnable{
 	@Override
 	public void run() {
 		try {
+			//int round = 1;
 			while(getNbAuthors() != 0 || getNbPoliticians() != 0) {
 				System.out.println("AUTHORS TURN");
 				synchronized (waitEndOfRoundOfAuthors) {
 					synchronized(mutexAuthors) {
 						mutexAuthors.notifyAll();
+						if(this.nbAuthors == 0) {
+							break;
+						}
 					}
 					waitEndOfRoundOfAuthors.wait();
 				}
@@ -182,9 +190,34 @@ public class Round implements Runnable{
 				synchronized (waitEndOfRoundOfPoliticians) {
 					synchronized(mutexPoliticians) {
 						mutexPoliticians.notifyAll();
+						if(this.nbPoliticians == 0) {
+							break;
+						}
 					}
 					waitEndOfRoundOfPoliticians.wait();
 				}
+				
+				
+				
+				/*round++;
+				boolean bcupdated = true;
+				int shortest_bc = round;
+				for(Politicien p : politicians) {
+					if(p.getMyBlockChain().getBlocks().size() < round) {
+						bcupdated=false;
+						if(shortest_bc < p.getMyBlockChain().getBlocks().size()) {
+							shortest_bc = p.getMyBlockChain().getBlocks().size();
+						}
+					}
+				}
+				for(Auteur a : authors) {
+					if(a.getMyBlockChain().getBlocks().size() < round) {
+						bcupdated=false;
+						if(shortest_bc < a.getMyBlockChain().getBlocks().size()) {
+							shortest_bc = a.getMyBlockChain().getBlocks().size();
+						}
+					}
+				}*/
 			}
 			this.winners();
 		} catch (InterruptedException e) {

@@ -3,12 +3,9 @@ package client;
 import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.concurrent.BrokenBarrierException;
-import java.util.concurrent.CyclicBarrier;
-import java.util.concurrent.Semaphore;
-
 import javax.xml.bind.DatatypeConverter;
 
+import Words.Ptrie;
 import block.Block;
 import block.Blockchain;
 import data.Data;
@@ -18,16 +15,6 @@ public class Auteur implements Runnable {
 
 	private static Integer idCpt = 0;
 	private static final Object mutex = new Object();
-	private static final Object waitround = new Object();
-	private static final Object nb_auths_asleep = new Object();
-	private static int awaiting_authors = 0; 
-	private static boolean isFirstAwaken = true;
-	private static Semaphore sem_auteurs;
-	private boolean canTakeSemaphore;
-	private static final Object wait_on_CanTakeSem = new Object();
-	private static final Object mutex_read_CTS = new Object();
-	
-	private static int nb_asleep = 0;
 	
 	private int myScore;
 	private Blockchain myBlockChain;
@@ -41,13 +28,17 @@ public class Auteur implements Runnable {
 	private ArrayList<Auteur> authors;
 	private ArrayList<Politicien> politicians;
 	
-	private CyclicBarrier barrier;
+	
+	private ArrayList<Blockchain> buffer;
+	private final Object mutexBuffer = new Object();
+
+	private Ptrie dico;
 	
 	private static int[] lettersPoint = {1, 3, 3, 2, 1, 4, 2, 4, 1, 8, 10, 1, 2, 1, 1, 3, 8, 1, 1, 1, 1,
 			4, 10, 10, 10, 10};
 	
 	@SuppressWarnings("unchecked")
-	public Auteur(Blockchain bc, int score, ArrayList<Character> letters, int word_size, CyclicBarrier barrier) {
+	public Auteur(Blockchain bc, int score, ArrayList<Character> letters, int word_size, Ptrie dico) {
 		this.myScore = score;
 		this.myBlockChain = new Blockchain(bc);//copy bc
 		this.myId = getMyId();
@@ -56,9 +47,9 @@ public class Auteur implements Runnable {
 		this.mySubmittedLetters = new ArrayList<>();
 		this.authors = new ArrayList<Auteur>();
 		this.politicians = new ArrayList<Politicien>();
-		this.barrier = barrier;
-		this.canTakeSemaphore = true;
 		this.word_size = word_size;
+		this.dico = dico;
+		this.buffer = new ArrayList<Blockchain>();
 	}
 	
 	//if block isValid then add it to the local blockchain,
@@ -66,9 +57,7 @@ public class Auteur implements Runnable {
 	//and return true
 	//else return false
 	public boolean validNewBlock(Block newBlock) {
-		if(this.myBlockChain.isValidBlock(newBlock)) {
-			
-			//TODO update this.myScore
+		if(this.myBlockChain.isValidBlock(newBlock, word_size, dico)) {
 			
 			myBlockChain.addBlock(newBlock);//add the new block
 			
@@ -94,10 +83,7 @@ public class Auteur implements Runnable {
 			return false;
 		}
 	}
-	
-	//TODO method : submit letter
-	
-	
+		
 	private String getMyId() {
 		int id;
 		synchronized (mutex) {
@@ -145,88 +131,19 @@ public class Auteur implements Runnable {
 		mySubmittedLetters.removeAll(toRemove);
 		
 	}
-	
-	
-	
-	
-	public void sendBlock(Block b,Blockchain bc) {
 
-		//broadcast the new block to others
-
-
-	}
-
-	public synchronized void receiveBlock(Block b,Blockchain obc) {
-		Blockchain bc = new Blockchain();
-		for(Block bl : obc.getBlocks()) {
-			bc.addBlock(bl);
+	public synchronized void receiveBlock(Blockchain obc) {
+		Blockchain tmp = new Blockchain(obc);
+		synchronized (mutexBuffer) {
+			buffer.add(tmp);
 		}
-		
-		if(myBlockChain.isValidBlock(b)) {
-			myBlockChain.addBlock(b);
-		}else {
-			
-			//CONSENSUS ALGORITHM
-			
-			Block tested_B = b;
-			ArrayList<Block> myblockList = (ArrayList<Block>) myBlockChain.getBlocks().clone();
-			ArrayList<Block> new_bc = new ArrayList<Block>();
-			ArrayList<Block> next_bc = new ArrayList<Block>();
-
-			while(true) {
-				
-				for(int i = myblockList.size()-1 ;i>=0; i--) {
-					if(myblockList.get(i).gethashId() == tested_B.getprevioushashId()) {
-						for(Block bl: myblockList) {
-							
-							if(bl.gethashId() == tested_B.getprevioushashId()) { // block in the blockchain
-								
-								new_bc.add(bl);//build the new blockchain
-								
-								//adding blocks after the block tested if their exist
-								Collections.reverse(next_bc);
-								for(Block nextB: next_bc) {
-									new_bc.add(nextB);
-								}
-								
-								this.myBlockChain = new Blockchain(new_bc);
-								return;
-								
-							}else {
-								new_bc.add(bl);//build the new blockchain
-							}
-						}
-					}else {
-						continue;
-					}
-				}
-				
-				//the blockchain after the block received
-				next_bc.add(tested_B);
-				
-				//getting the precedent block
-				for(Block newB: bc.getBlocks()) {
-					if(newB.gethashId() == tested_B.getprevioushashId()) {
-						tested_B = newB;
-					}
-				}
-			}
-		}
-//		System.out.println(myId +" author finished his consensus nique ta race");
 	}
-	
-	
-	
-	public static Object getWaiter() {
-		return Auteur.waitround;
-	}
-	
-	
 
 	@Override
 	public void run() {
-		int i = 1;
 		while(myBlockChain.getBlocks().size()<21 && round.getNbAuthors() >= this.word_size) {
+			
+			
 			cleanMySubmittedLetters();
 			
 			
@@ -238,14 +155,22 @@ public class Auteur implements Runnable {
 					p.receiveLetter(d);
 				}
 			}
-//				System.out.println(this.myId+" ieme passage : "+i );
-//				System.out.println(this.myId+" passed la barriere");
-//				System.out.println("authors size = "+authors.size());
-				
-			//System.out.println("UN AUTEUR REVEIL TOUS LES POLITICIENS AU NOMBRE DE "+this.politicians.size());
-			System.out.println(myBlockChain.getBlocks().size());
-			i++;
+			
 			round.waitAuthorsRound();
+			synchronized (mutexBuffer) {
+				if(buffer.size()==0) {
+					continue;
+				}else {
+					Blockchain best = new Blockchain(buffer.get(0));
+					for(Blockchain buffered : buffer) {
+						if(buffered.getBlockchainScore()> best.getBlockchainScore()) {
+							best = new Blockchain(buffered);
+						}
+					}
+					myBlockChain = best;
+					buffer.clear();
+				}
+			}
 		}
 		round.unRegister(this);
 		for(Block b : myBlockChain.getBlocks()) {
@@ -256,21 +181,10 @@ public class Auteur implements Runnable {
 			}
 		}
 		System.out.println("Score of Autor: " + myId + " = " +this.getScore());
-		
-		
-	}
-	
-	public static Object getAuthsAsleep() {
-		return nb_auths_asleep;
 	}
 	
 	public void setRound(Round round) {
 		this.round = round;
-	}
-	
-	
-	public static void setSemaphore(int permits) {
-		Auteur.sem_auteurs = new Semaphore(permits);
 	}
 	
 	public synchronized void authorLeft(Auteur a) {
@@ -298,5 +212,13 @@ public class Auteur implements Runnable {
 	
 	public String getId() {
 		return this.myId;
+	}
+	
+	public int getDifficulty() {
+		return this.word_size;
+	}
+	
+	public void setDifficulty(int n) {
+		this.word_size=n;
 	}
 }

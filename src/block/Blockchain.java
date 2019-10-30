@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+import Words.Ptrie;
 import data.Data;
 
 public class Blockchain {
@@ -12,7 +13,9 @@ public class Blockchain {
 	
 	private Lock lock = new ReentrantLock();
 	
-	//TODO when the game starts, the blockchain contains one block
+	private static int[] lettersPoint = {1, 3, 3, 2, 1, 4, 2, 4, 1, 8, 10, 1, 2, 1, 1, 3, 8, 1, 1, 1, 1,
+			4, 10, 10, 10, 10};
+	
 
 	public Blockchain() {
 		super();
@@ -22,6 +25,7 @@ public class Blockchain {
 	//copy constructor
 	public Blockchain(Blockchain toCopy) {
 		this.blockchain = new ArrayList<Block>();
+		@SuppressWarnings("unchecked")
 		ArrayList<Block> bl = (ArrayList<Block>) toCopy.getBlocks().clone();
 		for(Block b : bl) {
 			this.blockchain.add(new Block(b));
@@ -64,8 +68,9 @@ public class Blockchain {
 	}
 	
 	//Checks if the block can be added to the blockchain
-	public boolean isValidBlock(Block block) {
+	public boolean isValidBlock(Block block, int word_size, Ptrie dico) {
 		if(block.isEmptyWord()) return false;
+		if(block.getWord().size()< word_size) return false;
 		
 		StringBuilder strB = new StringBuilder();
 		
@@ -89,11 +94,20 @@ public class Blockchain {
 		}
 		
 		String word = strB.toString();//the word of the new block
-		
-		//TODO 
-			//word is in the dictionnary ??	
-		//
+		if(!dico.isWord(word)) return false;
 		
 		return true;
 	}
+	
+	public int getBlockchainScore() {
+		int score = 0;
+		for(Block b : getBlocks()) {
+			for(Data d : b.getWord()) {
+				score += lettersPoint[d.getLetter() -'a'];
+			}
+		}
+		return score;
+	}
+	
+	
 }

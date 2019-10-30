@@ -66,6 +66,19 @@ public class Block {
 		return politicianHashId;
 	}
 	
+	public String getStringWord() {
+		String s ="";
+		for(Data d : word) {
+			s+=d.getLetter();
+		}
+		return s;
+	}
+	
+	
+	public String toString() {
+		return "[ word = " + getStringWord()+ " ]";
+	}
+	
 	
 	
 }
