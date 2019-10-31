@@ -16,6 +16,7 @@ public class Politicien implements Runnable{
 
 	private static Integer idCpt = 0;
 	private static final Object mutex = new Object();
+	private static final Object mutex_cpt = new Object();
 	
 	private int myScore;
 	private Blockchain myBlockChain;
@@ -180,7 +181,12 @@ public class Politicien implements Runnable{
 						s+=d.getLetter();
 					}
 					System.out.println(this.myId+" propose le mot "+s);
-					Block block = new Block(myBlockChain.getLastBlock().gethashId(), mot, hash_id(s+myHashId+idCpt) , myHashId);
+					int idCpt_tmp;
+					synchronized (mutex_cpt) {
+						idCpt_tmp = idCpt;
+						idCpt++;
+					}
+					Block block = new Block(myBlockChain.getLastBlock().gethashId(), mot, hash_id(s+myHashId+idCpt_tmp) , myHashId);
 					myBlockChain.addBlock(block);
 					for(Auteur a : authors) {
 						a.receiveBlock((new Blockchain(myBlockChain)));
