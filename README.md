@@ -1,11 +1,9 @@
 # TPEA
 groupe Mersin Matton Belanger
-Serveur Ocaml (?)
-Message JSON
 
+Fonctionnenemt en Peer to Peer
 
-Une fois le code téléchargé, rendez vous à la racine du projet puis tapez les commandes suivantes dans l'ordre:
-
+Une fois le code tÃ©lÃ©chargÃ©, rendez vous Ã  la racine du projet puis tapez les commandes suivantes dans l'ordre:
         javac src/block/*.java src/client/*.java src/data/Data.java src/launch/Launcher.java src/round/Round.java src/Words/*.java
         cd src
         java launch.Launcher 
