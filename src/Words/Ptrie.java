@@ -129,38 +129,4 @@ public class Ptrie {
 		}
 		return word;
 	}
-	
-	public static void main(String args[]) {
-		ArrayList<Data> datas = new ArrayList<>();
-		datas.add(new Data('b', "", null));
-		datas.add(new Data('o', "", null));
-		datas.add(new Data('n', "", null));
-		datas.add(new Data('r', "", null));
-		datas.add(new Data('o', "", null));
-		datas.add(new Data('u', "", null));
-		datas.add(new Data('j', "", null));
-		
-		
-		
-		
-		Ptrie pt = new Ptrie("dict_100000_1_10.txt");
-		
-		
-		ArrayList <Data> tmp = new ArrayList<>();
-		for(int i = 0; i < 10000; i++) {
-			ArrayList <Data> word = pt.findWord(datas);
-			if(tmp.size() < word.size()) {
-				tmp.clear();
-				tmp.addAll(word);
-			}
-		}
-		
-		
-		
-		for(Data d : tmp) {
-			System.out.print(d.getLetter());
-		}
-		System.out.println();
-		
-	}
 }
