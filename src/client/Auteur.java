@@ -135,7 +135,28 @@ public class Auteur implements Runnable {
 	public synchronized void receiveBlock(Blockchain obc) {
 		Blockchain tmp = new Blockchain(obc);
 		synchronized (mutexBuffer) {
-			buffer.add(tmp);
+			Block b = tmp.getLastBlock();
+			Block before = tmp.getBlocks().get(tmp.getBlocks().size()-2);
+			boolean is_Ok = true;
+			if(b.getprevioushashId() != before.gethashId()) {
+				is_Ok=false;
+			}
+			if(b.getWord().size() < getDifficulty()) {
+				is_Ok = false;
+			}
+			ArrayList<String> already_in = new ArrayList<String>();
+			for(Data d : b.getWord()) {
+				if(already_in.contains(d.getAuthorHashId())) {
+					is_Ok = false;
+					break;
+				}else {
+					already_in.add(d.getAuthorHashId());
+				}
+			}
+			if(is_Ok) {
+				buffer.add(tmp);
+			}
+			
 		}
 	}
 
